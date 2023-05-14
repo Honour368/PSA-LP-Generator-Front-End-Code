@@ -1,9 +1,10 @@
 const { Configuration, OpenAIApi} = require("openai");
-const {config} = require("dotenv")
+// const {config} = require("dotenv")
+require("dotenv").config();
 
 const openAi = new OpenAIApi(new Configuration({
   // apiKey: "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",
-  apiKey: "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",
+  apiKey: process.env.API_KEY,
 })
 )
 
@@ -12,6 +13,7 @@ var express = require('express');
 var path = require('path');
 var app = express();
 var xlsx = require('xlsx');
+const { preprocessCSS } = require("vite");
 
 app.use(cors());
 // app.use(express.bodyParser());
