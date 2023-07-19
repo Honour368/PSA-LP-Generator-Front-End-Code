@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useController } from 'react-hook-form'
 import {
   FormErrorMessage,
   FormLabel,
@@ -8,7 +8,7 @@ import {
   Input,
   Button,
   Textarea,
-  Slider, SliderTrack, SliderFilledTrack, SliderThumb, Flex, Center
+  Flex,
 } from '@chakra-ui/react'
 import {Select} from "@chakra-ui/react";
 import {
@@ -24,11 +24,49 @@ export default function HookForm(props) {
     handleSubmit,
     register,
     formState: { errors, isSubmitting },
-  } = useForm()
+    control
+  } = useForm({
+    defaultValues: {
+      subtopics: [{subtopic:''}],
+      objectives: [{objective:''}]
+    }
+  })
 
-  function onSubmit(values) { //change here to communicate with backend
+  const {field: weeks} = useController({
+    name:'weeks',
+    control,
+    rules: { required: true, min:1, max:10 },
+  });
+
+  const {field: lesson_no} = useController({
+    name:'lesson_no',
+    control,
+    rules: { required: true, min:1, max:14 },
+  });
+
+  const {field: lesson_mins} = useController({
+    name:'lesson_mins',
+    control,
+    rules: { required: true, min:1, max:100 },
+  });
+
+  const {
+    fields: subtopicFields, 
+    append: subtopicAppend, 
+    remove: subtopicRemove
+  } = useFieldArray({name:'subtopics', control})
+
+  const {
+    fields: objectiveFields, 
+    append: objectiveAppend, 
+    remove: objectiveRemove
+  } = useFieldArray({name:'objectives', control})
+
+  function onSubmit(values) { 
     return new Promise((resolve) => {
         props.updateResponse(values)
+        props.setIsResponse(false)
+        props.setIsLoading(true)
       setTimeout(() => {
         alert("Your request has been submitted!" + "\n" + "Please wait a moment.")
         resolve()
@@ -36,19 +74,16 @@ export default function HookForm(props) {
     })
   }
 
-//   const [SliderValue, setSliderValue] = React.useState(100);
-//   const handleSliderChange = (val) => {setSliderValue(val)}
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <FormControl isInvalid={errors.name}>
-
         <FormLabel htmlFor='subject'>Choose your subject</FormLabel>
         <Select 
             id='subject'
             placeholder='Select Subject'
             {...register('subject')}
             >
+            {/*Subject options below*/}
             <option value='English as a Second Language'>English as a Second Language</option>
             <option value='Grammar'>Grammar</option>
             <option value='Reading'>Reading</option>
@@ -69,6 +104,7 @@ export default function HookForm(props) {
             placeholder='Select Grade'
             {...register('grade')}
             >
+            {/*Grade level options below*/}
             <option value='Pre-School'>Pre-School</option>
             <option value='1'>1st Grade</option>
             <option value='2'>2nd Grade</option>
@@ -83,7 +119,8 @@ export default function HookForm(props) {
             <option value='11'>11th Grade</option>
             <option value='12'>12th Grade</option>
         </Select>
-
+        
+        {/*Textbox input for module topic*/}
         <FormLabel pt='10px' htmlFor='topic'>Topic of Module</FormLabel>
         <Input
           id='topic'
@@ -94,24 +131,52 @@ export default function HookForm(props) {
           })}
         />
 
+        {/*Textbox input for module topic subtopics*/}
+        {/*Also implements multiple subtopics using "useFieldArray" hook*/}
         <FormLabel pt='10px' htmlFor='subtopic'>Module Subtopics</FormLabel>
-        <Input
-          id='subtopic'
-          name='subtopic'
-          resize='vertical'
-          placeholder='Subtopic'
-          {...register('topic', {
-            required: 'This is required',
-          })}
-        />
+        {subtopicFields.map((field, index)=>{
+          if ((index+1)!=subtopicFields.length) {
+            return <Flex mb={2} key={field.id}>
+                      <Input
+                      id={'subtopic '+ (index+1)}
+                      name={'subtopic '+ (index+1)}
+                      resize='vertical'
+                      placeholder={'Subtopic '+ (index+1)}
+                      {...register(`subtopics.${index}.subtopic`,{
+                        required: 'This is required',
+                      })}
+                      />
+                      <Button ml={2} colorScheme='blue' variant='outline' onClick={()=>{subtopicRemove(index)}}>
+                        -
+                      </Button>
+                    </Flex>
+          }
+          return <Flex key={field.id}>
+                    <Input
+                    id={'subtopic '+(index+1)}
+                    name={'subtopic '+(index+1)}
+                    resize='vertical'
+                    placeholder={'Subtopic '+(index+1)}
+                    {...register(`subtopics.${index}.subtopic`,{
+                      required: 'This is required',
+                    })}
+                    />
+                    <Button ml={2} colorScheme='blue' variant='outline' onClick={()=>{subtopicAppend(
+                      {subtopic:''}
+                    )}}>
+                      +
+                    </Button>
+                  </Flex>
+        })}
 
+        {/*Number input for number of weeks*/}
         <FormLabel pt='10px' htmlFor='weeks'>Number of weeks</FormLabel>
         <NumberInput size='md' maxW={24} defaultValue={1} min={1} max={10} clampValueOnBlur={true}
             id='weeks'
             name="weeks"
-            {...register('weeks',{
-                required: 'This is required',
-              })}
+            onChange={weeks.onChange}
+            value={weeks.value}
+            {...weeks}
         >
             <NumberInputField />
             <NumberInputStepper>
@@ -120,13 +185,14 @@ export default function HookForm(props) {
             </NumberInputStepper>
         </NumberInput>
 
+        {/*Number input for number of lessons per week*/}
         <FormLabel pt='10px' htmlFor='lesson_no'>Number of Lessons per Week</FormLabel>
         <NumberInput size='md' maxW={24} defaultValue={1} min={1} max={14} clampValueOnBlur={true}
             id='lesson_no'
             name="lesson_no"
-            {...register('lesson_no',{
-                required: 'This is required',
-              })}
+            onChange={lesson_no.onChange}
+            value={lesson_no.value}
+            {...lesson_no}
         >
             <NumberInputField />
             <NumberInputStepper>
@@ -135,13 +201,14 @@ export default function HookForm(props) {
             </NumberInputStepper>
         </NumberInput>
 
+        {/*Number input for lesson length*/}
         <FormLabel pt='10px' htmlFor='lesson_mins'>Length of lesson (in mins)</FormLabel>
         <NumberInput size='md' maxW={24} defaultValue={1} min={1} max={180} clampValueOnBlur={true}
             id='lesson_mins'
             name="lesson_mins"
-            {...register('lesson_mins',{
-                required: 'This is required',
-              })}
+            onChange={lesson_mins.onChange}
+            value={lesson_mins.value}
+            {...lesson_mins}
         >
             <NumberInputField />
             <NumberInputStepper>
@@ -150,51 +217,45 @@ export default function HookForm(props) {
             </NumberInputStepper>
         </NumberInput>
 
-        {/* <p style={{fontWeight:'600', paddingTop:'10px'}}>Number of students:</p>
-        <Flex>
-            <FormLabel htmlFor='min_student_no' alignSelf={'center'}>Min</FormLabel>
-            <NumberInput size='md' maxW={24} defaultValue={1} min={1} max={40} clampValueOnBlur={true}
-                id='min_student_no'
-                name="min_student_no"
-                {...register('min_student_no',{
-                    required: 'This is required',
-                  })}
-            >
-                <NumberInputField />
-                <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                </NumberInputStepper>
-            </NumberInput>
-            
-            <FormLabel htmlFor='max_student_no' alignSelf={'center'} paddingInlineStart={'10px'}>Max</FormLabel>
-            <NumberInput size='md' maxW={24} defaultValue={1} min={1} max={20} clampValueOnBlur={true}
-                id='max_student_no'
-                name="max_student_no"
-                {...register('max_student_no',{
-                    required: 'This is required',
-                  })}
-            >
-                <NumberInputField />
-                <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                </NumberInputStepper>
-            </NumberInput>
-        </Flex> */}
-
+        {/*Textbox input for learning objectives*/}
+        {/*Also implements multiple learning objectives using "useFieldArray" hook*/}
         <FormLabel pt='10px' htmlFor='learning_objectives'>Learning Objectives</FormLabel>
-        <Textarea
-            // value={value}
-            // onChange={handleInputChange}
-            placeholder={'Learning Obj 1' + '\n' + 'Learning Obj 2'}
-            resize='vertical'
-            id='learning_objectives'
-            name="learning_objectives"
-            {...register('learning_objectives', {
-                required: 'This is required',
-              })}
-        />
+        {objectiveFields.map((field, index)=>{
+          if ((index+1)!=objectiveFields.length) {
+            return <Flex mb={2} key={field.id}>
+                      <Textarea
+                        placeholder={'Learning Obj '+ (index+1)}
+                        resize='vertical'
+                        id={'Learning Obj '+ (index+1)}
+                        name={'Learning Obj '+ (index+1)}
+                        {...register(`objectives.${index}.objective`, {
+                            required: 'This is required',
+                          })}
+                      />
+                      <Button ml={2} mt={5} colorScheme='blue' variant='outline' onClick={()=>{objectiveRemove(index)}}>
+                        -
+                      </Button>
+                    </Flex>
+            }
+          return <Flex key={field.id}>
+                  <Textarea
+                        placeholder={'Learning Obj '+ (index+1)}
+                        resize='vertical'
+                        id={'Learning Obj '+ (index+1)}
+                        name={'Learning Obj '+ (index+1)}
+                        {...register(`objectives.${index}.objective`, {
+                            required: 'This is required',
+                          })}
+                      />
+                      <Button ml={2} mt={5} colorScheme='blue' variant='outline' onClick={()=>{objectiveAppend(
+                        {objective:''}
+                      )}}>
+                        +
+                      </Button>
+                </Flex>  
+        })}
+
+        {/*Textbox input for additional notes*/}
         <FormLabel pt='10px' htmlFor='additional_notes'>Additional Notes</FormLabel>
         <Textarea
             // value={value}
@@ -206,35 +267,12 @@ export default function HookForm(props) {
             {...register('additional_notes')}
         />
 
-
-
-
-
-        {/* <Slider min={30} max={180} 
-            id = 'lesson_mins'
-            name = "lesson_mins"
-            flex='1' 
-            focusThumbOnChange={false}
-            value={SliderValue}
-            {...register('lesson_mins')}
-            // onChange={handleSliderChange}
-            onChange={(e)=>{
-                register('lesson_mins').onChange(e);
-                {handleSliderChange};
-            }}
-        >
-            <SliderTrack>
-                <SliderFilledTrack />
-            </SliderTrack>
-            <SliderThumb fontSize='sm' boxSize='32px' children={SliderValue} />
-        </Slider> */}
-
         <FormErrorMessage>
           {errors.name && errors.name.message}
         </FormErrorMessage>
       </FormControl>
       <Button mt={4} colorScheme='teal' isLoading={isSubmitting} type='submit'>
-        Submit
+        Generate
       </Button>
     </form>
   )
